@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Results – GPSC PrepZone</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body class="results-body">
+
+  <!-- Nav -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">🎓</div>
+      <div>
+        <span class="brand-title">GPSC PrepZone</span>
+        <span class="brand-subtitle">Results &amp; Analytics</span>
+      </div>
+    </div>
+    <a href="/" class="btn-secondary btn-sm">← New Test</a>
+  </nav>
+
+  <div class="results-container">
+
+    <!-- Score Card -->
+    <div class="score-hero">
+      <div class="score-circle-wrap">
+        <div class="score-circle">
+          <div class="score-number">{{ "%.2f"|format(results.raw_score) }}</div>
+          <div class="score-max">/ {{ results.max_score }}</div>
+        </div>
+      </div>
+      <div class="score-details">
+        <h1>Test Completed!</h1>
+        <div class="score-badges">
+          <div class="badge-stat bg-green">
+            <div class="bs-val">{{ results.correct }}</div>
+            <div class="bs-label">Correct</div>
+          </div>
+          <div class="badge-stat bg-red">
+            <div class="bs-val">{{ results.wrong }}</div>
+            <div class="bs-label">Wrong</div>
+          </div>
+          <div class="badge-stat bg-grey">
+            <div class="bs-val">{{ results.not_attempted }}</div>
+            <div class="bs-label">Skipped</div>
+          </div>
+          <div class="badge-stat bg-orange">
+            <div class="bs-val">{{ results.accuracy }}%</div>
+            <div class="bs-label">Accuracy</div>
+          </div>
+        </div>
+        {% if results.time_taken %}
+        <p class="time-taken">⏱ Time taken: {{ (results.time_taken // 60) }}m {{ (results.time_taken % 60) }}s</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Subject-wise Performance Table -->
+    <div class="results-section">
+      <h2>📊 Subject-wise Performance</h2>
+      <div class="table-wrap">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th>Correct</th>
+              <th>Wrong</th>
+              <th>Skipped</th>
+              <th>Score</th>
+              <th>Performance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for subj, stats in results.subject_stats.items() %}
+            <tr>
+              <td><strong>{{ subj }}</strong></td>
+              <td class="text-green">{{ stats.correct }}</td>
+              <td class="text-red">{{ stats.wrong }}</td>
+              <td class="text-grey">{{ stats.not_attempted }}</td>
+              <td class="{% if stats.score > 0 %}text-green{% elif stats.score < 0 %}text-red{% endif %}">
+                {{ "%.2f"|format(stats.score) }}
+              </td>
+              <td>
+                {% set total = stats.correct + stats.wrong + stats.not_attempted %}
+                {% if total > 0 %}
+                  {% set pct = (stats.correct / total * 100) | round | int %}
+                  <div class="perf-bar-wrap">
+                    <div class="perf-bar" style="width: {{ pct }}%"></div>
+                    <span class="perf-pct">{{ pct }}%</span>
+                  </div>
+                {% else %}
+                  <span class="text-grey">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Insights -->
+    <div class="insights-row">
+      {% if results.weak_subjects %}
+      <div class="insight-card insight-weak">
+        <h3>📉 Weak Areas</h3>
+        <ul>
+          {% for s in results.weak_subjects %}
+          <li>• {{ s }}</li>
+          {% endfor %}
+        </ul>
+        <p class="insight-tip">Focus on these subjects first in your next revision session.</p>
+      </div>
+      {% endif %}
+
+      {% if results.strong_subjects %}
+      <div class="insight-card insight-strong">
+        <h3>📈 Strong Areas</h3>
+        <ul>
+          {% for s in results.strong_subjects %}
+          <li>• {{ s }}</li>
+          {% endfor %}
+        </ul>
+        <p class="insight-tip">Keep up the good work! These are your scoring subjects.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Question Review -->
+    <div class="results-section">
+      <div class="review-header">
+        <h2>🔍 Question-by-Question Review</h2>
+        <div class="review-filters">
+          <button class="filter-btn active" onclick="filterReview('all', this)">All</button>
+          <button class="filter-btn" onclick="filterReview('correct', this)">✅ Correct</button>
+          <button class="filter-btn" onclick="filterReview('wrong', this)">❌ Wrong</button>
+          <button class="filter-btn" onclick="filterReview('not_attempted', this)">⬜ Skipped</button>
+          <button class="filter-btn" onclick="filterReview('cancelled', this)">⚠ Cancelled</button>
+        </div>
+      </div>
+
+      <div id="reviewList">
+        {% for q in review %}
+        <div class="review-card review-{{ q.status }}" data-status="{{ q.status }}">
+          <div class="review-card-header">
+            <div class="review-q-num">
+              Q.{{ q.question_number }}
+              {% if q.is_cancelled %}
+                <span class="badge-cancelled">⚠ Cancelled</span>
+              {% elif q.status == 'correct' %}
+                <span class="badge-correct">✅ Correct</span>
+              {% elif q.status == 'wrong' %}
+                <span class="badge-wrong">❌ Wrong</span>
+              {% else %}
+                <span class="badge-skipped">⬜ Skipped</span>
+              {% endif %}
+            </div>
+            <div class="review-subject">{{ q.subject }}</div>
+          </div>
+
+          <p class="review-q-text">{{ q.question_text_english }}</p>
+
+          <div class="review-options">
+            {% for opt_key, opt_text in [('A', q.option_a), ('B', q.option_b), ('C', q.option_c), ('D', q.option_d)] %}
+            <div class="review-opt
+              {% if opt_key == q.correct_answer %}review-opt-correct{% endif %}
+              {% if opt_key == q.user_answer and opt_key != q.correct_answer %}review-opt-wrong{% endif %}
+            ">
+              <span class="review-opt-label">{{ opt_key }}</span>
+              <span>{{ opt_text }}</span>
+              {% if opt_key == q.correct_answer %}<span class="opt-tag correct-tag">✓ Correct</span>{% endif %}
+              {% if opt_key == q.user_answer and opt_key != q.correct_answer %}<span class="opt-tag wrong-tag">✗ Your Answer</span>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="results-cta">
+      <a href="/" class="btn-primary">🔄 Start New Test</a>
+      <button class="btn-secondary" onclick="window.print()">🖨️ Print Report</button>
+    </div>
+
+  </div><!-- /.results-container -->
+
+  <footer class="footer">
+    <p>GPSC PrepZone — Build your best score with real PYQs.</p>
+  </footer>
+
+  <script>
+    function filterReview(status, btn) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.review-card').forEach(card => {
+        if (status === 'all' || card.dataset.status === status) {
+          card.style.display = '';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

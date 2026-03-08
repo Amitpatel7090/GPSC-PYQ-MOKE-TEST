@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPSC Mock Test – PrepZone</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body class="test-body">
+
+  <!-- Top Header Bar -->
+  <header class="test-header">
+    <div class="test-header-left">
+      <div class="brand-icon-sm">🎓</div>
+      <span class="test-brand">GPSC PrepZone</span>
+    </div>
+    <div class="test-header-center">
+      <div class="timer-wrap">
+        <span class="timer-icon">⏱</span>
+        <span id="timerDisplay" class="timer-display">02:00:00</span>
+      </div>
+    </div>
+    <div class="test-header-right">
+      <button class="btn-lang" id="langToggleBtn" onclick="toggleLanguage()">🌐 English</button>
+      <button class="btn-submit-top" onclick="confirmSubmit()">Submit Test</button>
+    </div>
+  </header>
+
+  <div class="test-layout">
+    <!-- Left: Question Area -->
+    <main class="question-area">
+      <!-- Question Header -->
+      <div class="question-header">
+        <div class="q-meta">
+          <span id="qSubjectBadge" class="subject-badge">Subject</span>
+          <span id="qCancelledBadge" class="cancelled-badge hidden">⚠ Cancelled — No Marks</span>
+        </div>
+        <div class="q-counter">
+          Question <span id="currentQNum">1</span> of <span id="totalQNum">{{ total_questions }}</span>
+        </div>
+      </div>
+
+      <!-- Language Toggle Tabs (in question area) -->
+      <div class="lang-tabs" id="langTabs">
+        <button class="lang-tab active" id="tabEn" onclick="setLang('english')">English</button>
+        <button class="lang-tab" id="tabGu" onclick="setLang('gujarati')">ગુજરાતી</button>
+      </div>
+
+      <!-- Question Text -->
+      <div class="question-box">
+        <p class="question-number-text" id="questionNumberText">Q.1</p>
+        <p class="question-text" id="questionText">Loading…</p>
+      </div>
+
+      <!-- Options -->
+      <div class="options-grid" id="optionsGrid">
+        <div class="option-btn" id="optA" onclick="selectOption('A')">
+          <span class="opt-label">A</span>
+          <span class="opt-text" id="optTextA"></span>
+        </div>
+        <div class="option-btn" id="optB" onclick="selectOption('B')">
+          <span class="opt-label">B</span>
+          <span class="opt-text" id="optTextB"></span>
+        </div>
+        <div class="option-btn" id="optC" onclick="selectOption('C')">
+          <span class="opt-label">C</span>
+          <span class="opt-text" id="optTextC"></span>
+        </div>
+        <div class="option-btn" id="optD" onclick="selectOption('D')">
+          <span class="opt-label">D</span>
+          <span class="opt-text" id="optTextD"></span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <button class="btn-review" onclick="markForReview()">🔖 Mark for Review</button>
+        <button class="btn-clear" onclick="clearAnswer()">✕ Clear Response</button>
+        <div class="nav-arrows">
+          <button class="btn-arrow" onclick="navigate(-1)">← Prev</button>
+          <button class="btn-arrow btn-next" onclick="navigate(1)">Next →</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right: Navigation Panel -->
+    <aside class="nav-panel">
+      <div class="nav-panel-header">
+        <h3>Question Navigator</h3>
+      </div>
+
+      <!-- Legend -->
+      <div class="legend">
+        <div class="legend-item"><span class="dot dot-green"></span>Answered</div>
+        <div class="legend-item"><span class="dot dot-red"></span>Not Answered</div>
+        <div class="legend-item"><span class="dot dot-yellow"></span>Marked for Review</div>
+        <div class="legend-item"><span class="dot dot-grey"></span>Not Visited</div>
+        <div class="legend-item"><span class="dot dot-cancelled"></span>Cancelled</div>
+      </div>
+
+      <!-- Progress Stats -->
+      <div class="progress-stats">
+        <div class="ps-item ps-green"><span id="countAnswered">0</span><br/><small>Answered</small></div>
+        <div class="ps-item ps-red"><span id="countNotAns">0</span><br/><small>Not Ans.</small></div>
+        <div class="ps-item ps-yellow"><span id="countReview">0</span><br/><small>Review</small></div>
+        <div class="ps-item ps-grey"><span id="countNotVisited">{{ total_questions }}</span><br/><small>Not Visited</small></div>
+      </div>
+
+      <!-- Question Grid -->
+      <div class="q-grid" id="questionGrid">
+        <!-- populated by JS -->
+      </div>
+
+      <button class="btn-submit-full" onclick="confirmSubmit()">🏁 Submit Test</button>
+    </aside>
+  </div>
+
+  <!-- Confirm Submit Modal -->
+  <div class="modal-overlay hidden" id="submitModal">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h2>⚠️ Submit Test?</h2>
+      </div>
+      <div class="modal-body" id="submitSummary">
+        <!-- filled by JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('submitModal').classList.add('hidden')">← Continue Test</button>
+        <button class="btn-danger" onclick="submitTest()">Submit Now →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading overlay -->
+  <div class="loading-overlay hidden" id="loadingOverlay">
+    <div class="loading-card">
+      <div class="big-spinner"></div>
+      <p>Calculating your results…</p>
+    </div>
+  </div>
+
+  <!-- Inject questions data -->
+  <script>
+    const TEST_ID = {{ test_id | tojson }};
+    const DURATION_SECONDS = {{ duration_minutes }} * 60;
+    const LANGUAGE_PREF = {{ language | tojson }};
+    const QUESTIONS = {{ questions | tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='js/test.js') }}"></script>
+</body>
+</html>
